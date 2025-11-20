@@ -1,0 +1,8 @@
+[package]
+name = "8ch99/partcache"
+version = "1.0.0"
+license = "MIT"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+[dependencies]

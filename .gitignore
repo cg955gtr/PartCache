@@ -1,0 +1,9 @@
+*.log
+*.rbxl
+*.rbxlx
+*.rbxlx.lock
+*.rbxl.lock
+vscode
+sourcemap.json
+Packages
+wally.lock

@@ -63,6 +63,15 @@ export type PartCache = typeof(setmetatable({} :: {
 	ExpansionSize: number
 }, PartCache))
 
+--[==[
+	Creates a new PartCache with the given template part, part count, and parent container for the cache to use.
+
+	@param Template BasePart - The template base part to use, this is the part that will be used in the cache
+	@param PresetParts number? - The amount of parts you want to pre-create in the cache
+	@param Parent Instance? - The parent container you want to use for the cache
+
+	@return PartCache
+]==]
 function PartCache.new(Template: BasePart, PresetParts: number?, Parent: Instance?): PartCache
 	assert(Template and typeof(Template) == "Instance" and Template:IsA("BasePart"), "Template part is not a BasePart instance!")
 	
@@ -100,6 +109,10 @@ function PartCache.new(Template: BasePart, PresetParts: number?, Parent: Instanc
 	return self
 end
 
+--[==[
+	Completely disposes of the part cache, use this when you don't need it anymore.
+	NOTE: This will destroy parts that are in use aswell, which may break something if you aren't careful. Beware!
+]==]
 function PartCache.Destroy(self: PartCache)
 	--// Destroy the template
 	self.Template:Destroy()
@@ -148,6 +161,11 @@ end
 
 --// Public methods
 
+--[==[
+	Fetches a part from the part cache, and expands the part cache by 10 if the cache does not have any available parts.
+
+	@return BasePart
+]==]
 function PartCache.GetPart(self: PartCache): BasePart
 	--// Make sure parts are available
 	if self.CacheSize == 0 then
@@ -173,6 +191,11 @@ function PartCache.GetPart(self: PartCache): BasePart
 	return Part
 end
 
+--[==[
+	Returns a part that is in use to the cache. Parts that are not in the cache, or are not in use, will throw an error.
+
+	@param Part BasePart - The part to return to the cache
+]==]
 function PartCache.ReturnPart(self: PartCache, Part: BasePart)
 	--// Make sure the part is in use
 	if not self.InUse[Part] then
@@ -196,6 +219,11 @@ function PartCache.ReturnPart(self: PartCache, Part: BasePart)
 	Part.CFrame = CACHED_PART_CFRAME
 end
 
+--[==[
+	Sets a new parent for the cache to use, also moving all the existing parts in the cache under that new instance.
+
+	@param Parent Instance - The new parent instance to use
+]==]
 function PartCache.SetCacheParent(self: PartCache, Parent: Instance)
 	self.Parent = Parent
 
@@ -213,6 +241,11 @@ function PartCache.SetCacheParent(self: PartCache, Parent: Instance)
 	end
 end
 
+--[==[
+	Expands the size of the part cache by the given amount.
+
+	@param Amount number - The amount of new parts to add to the cache
+]==]
 function PartCache.Expand(self: PartCache, Amount: number)
 	for _ = 1, Amount do
 		self:_createPart()

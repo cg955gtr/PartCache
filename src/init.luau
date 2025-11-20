@@ -44,6 +44,7 @@ local CACHED_PART_CFRAME: CFrame = CFrame.new(0, 1e7, 0)
 
 local PartCache = {}
 PartCache.__index = PartCache
+PartCache.__type = "PartCache"
 
 export type PartCacheLinkNode = {
 	Value: BasePart,
@@ -51,7 +52,6 @@ export type PartCacheLinkNode = {
 }
 
 export type PartCache = typeof(setmetatable({} :: {
-	__type: string,
 	Cache: PartCacheLinkNode?,
 	InUse: { [BasePart]: boolean },
 	CacheSize: number,
@@ -74,23 +74,22 @@ export type PartCache = typeof(setmetatable({} :: {
 ]==]
 function PartCache.new(Template: BasePart, PresetParts: number?, Parent: Instance?): PartCache
 	assert(Template and typeof(Template) == "Instance" and Template:IsA("BasePart"), "Template part is not a BasePart instance!")
-	
+
 	local RealPresetParts: number = 5
 	local RealParent: Instance = workspace
-	
+
 	if PresetParts ~= nil then
 		assert(type(PresetParts) == "number", "PresetParts must be provided!")
 		assert(tostring(math.floor(PresetParts)) == tostring(PresetParts), "PresetParts must be an int!")
 		RealPresetParts = PresetParts
 	end
-	
+
 	if Parent ~= nil then
 		assert(typeof(Parent) == "Instance", "Valid parent must be provided!")
 		RealParent = Parent
 	end
 
 	local self: PartCache = setmetatable({
-		__type = "PartCache",
 		Cache = nil,
 		InUse = {} :: { [BasePart]: boolean },
 		CacheSize = 0,
@@ -116,7 +115,7 @@ end
 function PartCache.Destroy(self: PartCache)
 	--// Destroy the template
 	self.Template:Destroy()
-	
+
 	--// Destroy parts in use
 	for Part: BasePart in self.InUse do
 		Part:Destroy()

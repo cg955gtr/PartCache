@@ -12,6 +12,10 @@ Creating new parts and destroying them constantly, especially when rapid, is a v
 
 This module is compatible with FastCast, and is compatible with --!strict typechecking.
 
+## Installation
+
+You can either install via wally, or by just grabbing the `init.luau` file from the repo.
+
 ## Usage Example
 
 ```luau

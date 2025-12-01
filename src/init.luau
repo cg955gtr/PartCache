@@ -90,7 +90,7 @@ function PartCache.new(Template: BasePart, PresetParts: number?, Parent: Instanc
 	end
 
 	local self: PartCache = setmetatable({
-		Cache = nil,
+		Cache = nil :: PartCacheLinkNode?,
 		InUse = {} :: { [BasePart]: boolean },
 		CacheSize = 0,
 		InUseSize = 0,

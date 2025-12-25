@@ -2,7 +2,7 @@
 	Author: 8ch99
 	File: PartCache.luau
 	Date written: 20th November 2025
-	Last edited: 20th November 2025
+	Last edited: 25th December 2025
 
 	PartCache module that uses LinkedLists and has method parity with Xan_TheDragon's PartCache module
 	The only different method is :Destroy() instead of :Dispose(), but that shouldn't be an issue
@@ -59,7 +59,7 @@ export type PartCache = typeof(setmetatable({} :: {
 	TotalSize: number,
 
 	Template: BasePart,
-	Parent: Instance,
+	CurrentCacheParent: Instance,
 	ExpansionSize: number
 }, PartCache))
 
@@ -74,6 +74,7 @@ export type PartCache = typeof(setmetatable({} :: {
 ]==]
 function PartCache.new(Template: BasePart, PresetParts: number?, Parent: Instance?): PartCache
 	assert(Template and typeof(Template) == "Instance" and Template:IsA("BasePart"), "Template part is not a BasePart instance!")
+	assert(Template.Archivable == true, "Template part must be archivable! It will not work with the PartCache otherwise!")
 
 	local RealPresetParts: number = 5
 	local RealParent: Instance = workspace
@@ -97,13 +98,14 @@ function PartCache.new(Template: BasePart, PresetParts: number?, Parent: Instanc
 		TotalSize = 0,
 
 		Template = Template:Clone(),
-		Parent = RealParent,
+		CurrentCacheParent = RealParent,
 		ExpansionSize = 10,
 	}, PartCache)
-
-	for _ = 1, RealPresetParts do
-		self:_createPart()
-	end
+	
+	self.Template.Anchored = true
+	self.Template.Parent = nil
+	
+	self:Expand(RealPresetParts)
 
 	return self
 end
@@ -137,28 +139,36 @@ function PartCache.Destroy(self: PartCache)
 	setmetatable(self :: any, nil)
 end
 
---// Private methods
+--[==[
+	Expands the size of the part cache by the given amount.
 
-function PartCache._createPart(self: PartCache)
+	@param Count number - The amount of new parts to add to the cache
+]==]
+function PartCache.Expand(self: PartCache, Count: number)
 	local CurrentNode: PartCacheLinkNode? = self.Cache
-	local Part: BasePart = self.Template:Clone()
+	local Parent: Instance = self.CurrentCacheParent
+	local Template: BasePart = self.Template
 
-	self.TotalSize += 1
+	self.TotalSize += Count
+	self.CacheSize += Count
 
-	--// Insert node
-	self.CacheSize += 1
-	self.Cache = {
-		Value = Part,
-		Next = CurrentNode,
-	}
+	--// Insert nodes
+	for _ = 1, Count do
+		local Part: BasePart = Template:Clone()
 
-	Part.CFrame = CACHED_PART_CFRAME
-	Part.Parent = self.Parent
+		CurrentNode = {
+			Value = Part,
+			Next = CurrentNode
+		}
 
-	return Part
+		Part.CFrame = CACHED_PART_CFRAME
+		Part.Parent = Parent
+	end
+
+	self.Cache = CurrentNode
 end
 
---// Public methods
+--// TODO: add shrink method
 
 --[==[
 	Fetches a part from the part cache, and expands the part cache by 10 if the cache does not have any available parts.
@@ -169,11 +179,8 @@ function PartCache.GetPart(self: PartCache): BasePart
 	--// Make sure parts are available
 	if self.CacheSize == 0 then
 		--// Otherwise, Expand the cache, since we are above demand for parts needed
-		warn(`No parts available in the cache! Creating {self.ExpansionSize} new part instance(s)... New size: {self.TotalSize + self.ExpansionSize} parts.`)
-
-		for _ = 1, self.ExpansionSize do
-			self:_createPart()
-		end
+		self:Expand(self.ExpansionSize)
+		warn(`No parts available in the cache! Creating {self.ExpansionSize} new part instance(s)... New size: {self.TotalSize} parts.`)
 	end
 
 	--// Now fetch the latest node + part from the cache
@@ -216,6 +223,9 @@ function PartCache.ReturnPart(self: PartCache, Part: BasePart)
 	self.InUse[Part] = nil
 
 	Part.CFrame = CACHED_PART_CFRAME
+	if not Part.Anchored then
+		Part.Anchored = true
+	end
 end
 
 --[==[
@@ -224,7 +234,7 @@ end
 	@param Parent Instance - The new parent instance to use
 ]==]
 function PartCache.SetCacheParent(self: PartCache, Parent: Instance)
-	self.Parent = Parent
+	self.CurrentCacheParent = Parent
 
 	--// Move parts in use
 	for Part: BasePart in self.InUse do
@@ -237,17 +247,6 @@ function PartCache.SetCacheParent(self: PartCache, Parent: Instance)
 	while CurrentCachedNode ~= nil do
 		CurrentCachedNode.Value.Parent = Parent
 		CurrentCachedNode = CurrentCachedNode.Next
-	end
-end
-
---[==[
-	Expands the size of the part cache by the given amount.
-
-	@param Amount number - The amount of new parts to add to the cache
-]==]
-function PartCache.Expand(self: PartCache, Amount: number)
-	for _ = 1, Amount do
-		self:_createPart()
 	end
 end
 

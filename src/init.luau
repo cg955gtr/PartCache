@@ -101,10 +101,10 @@ function PartCache.new(Template: BasePart, PresetParts: number?, Parent: Instanc
 		CurrentCacheParent = RealParent,
 		ExpansionSize = 10,
 	}, PartCache)
-	
+
 	self.Template.Anchored = true
 	self.Template.Parent = nil
-	
+
 	self:Expand(RealPresetParts)
 
 	return self
@@ -195,6 +195,46 @@ function PartCache.GetPart(self: PartCache): BasePart
 	self.InUse[Part] = true
 
 	return Part
+end
+
+--[==[
+	Fetches an amount of parts from the part cache.
+
+	@return {BasePart}
+]==]
+function PartCache.GetParts(self: PartCache, Amount: number): { BasePart }
+	--// Make sure parts are available
+	local Available: number = self.CacheSize - Amount
+	
+	if Available < 0 then
+		self:Expand(-Available)
+		warn(`No parts available in the cache! Creating {-Available} new part instance(s)... New size: {self.TotalSize} parts.`)
+	end
+	
+	local Parts: { BasePart } = {}
+	
+	local CurrentNode: PartCacheLinkNode? = self.Cache :: PartCacheLinkNode
+	local InUse: { [BasePart]: boolean } = self.InUse
+	
+	if CurrentNode then
+		self.CacheSize -= Amount
+		self.InUseSize += Amount
+
+		for i: number = 1, Amount do
+			local Next: PartCacheLinkNode? = CurrentNode.Next
+			local Part: BasePart = CurrentNode.Value
+
+			--// Remove node
+			self.Cache = Next
+			InUse[Part] = true
+			
+			table.insert(Parts, Part)
+
+			CurrentNode = Next
+		end
+	end
+
+	return Parts
 end
 
 --[==[

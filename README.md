@@ -4,7 +4,7 @@ This can be used for when you are constantly creating parts, especially parts th
 
 - Particle/sound emitting parts
 - Projectiles
-- Lightning
+- Lightning effects
 
 Creating new parts and destroying them constantly, especially when rapid, is a very laggy process, and the part cache module will just CFrame the part when you pull a part from it. When the part is not needed anymore, you can return it to the cache, which will CFrame it further away again.
 
@@ -19,42 +19,38 @@ You can either install via wally, or by just grabbing the `init.luau` file from 
 ## Usage Example
 
 ```luau
---// This is a dumb usage example, but it will show you how it can be used.
-
 --!strict
-local PartCache = require(path_to_part_cache_module_here)
 
-local Cache: PartCache.PartCache = PartCache.new(path_to_template_part_here, 50, path_to_storage_here)
+--// This is a dumb usage example, but it will show you how it can be used.
+--// Get part cache module
+local PartCacheClass = require(path_to_module)
+
+--// Create a part cache
+local partCache = PartCacheClass.new(path_to_template_part_here, 50, path_to_storage_here)
 
 --// Pull 30 parts from the cache
-local PartsInUse: { BasePart } = {}
-
-for _ = 1, 30 do
-	table.insert(PartsInUse, Cache:GetPart())
-end
+local partsInUse = partCache:GetParts(30)
 
 --// We now have pulled 30 parts from the cache that we can use
 --// Lets unanchor them and just throw them somewhere random from above
 
-local RNG: Random = Random.new()
+local RNG = Random.new()
 
-for _, Part: BasePart in PartsInUse do
-	Part.Position = Vector3.new(RNG:NextNumber(-200, 200), 50, RNG:NextNumber(-200, 200))
-	Part.Anchored = false
+for _, part in PartsInUse do
+	part.Position = RNG:NextUnitVector() * RNG:NextNumber(0.5, 7.5)
+	part.Anchored = false
 end
 
 --// Wait a bit
 task.wait(6)
 
---// Re-anchor the parts, and return them to the cache
-for _, Part: BasePart in PartsInUse do
-	Part.Anchored = true
-	Cache:ReturnPart(Part)
-end
+--// Return them to the cache
+--// Returning parts will also re-anchor them, so we don't have to do that here
+partCache:ReturnParts(partsInUse)
 
 --// We don't need the part cache anymore, we can destroy it now, save some memory!
 --// NOTE: This will also destroy parts in use. Beware!
-Cache:Destroy()
+partCache:Destroy()
 
 --// You can use this in so many different ways, for re-using parts and not having to constantly clone and destroy them
 ```

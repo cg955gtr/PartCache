@@ -1,12 +1,7 @@
---[==[
-	Author: 8ch99
-	File: PartCache.luau
-	Date written: 20th November 2025
-	Last edited: 25th December 2025
-
-	PartCache module that uses LinkedLists and has method parity with Xan_TheDragon's PartCache module
-	The only different method is :Destroy() instead of :Dispose(), but that shouldn't be an issue
-]==]
+--// Author: 8ch99
+--// Date written: 20th November 2025
+--// PartCache module that uses LinkedLists and has method parity with Xan_TheDragon's PartCache module
+--// ^ excluding :Dispose(), which is written as :Destroy() instead
 
 --[==[
 
@@ -38,13 +33,15 @@ SOFTWARE.
 --!native
 --!optimize 2
 
-local CACHED_PART_CFRAME: CFrame = CFrame.new(0, 1e7, 0)
+local CACHED_PART_CFRAME = CFrame.new(0, 1e7, 0)
 
 --// @class PartCache
 
 local PartCache = {}
 PartCache.__index = PartCache
 PartCache.__type = "PartCache"
+
+--// Typedefs
 
 export type PartCacheLinkNode = {
 	Value: BasePart,
@@ -63,31 +60,32 @@ export type PartCache = typeof(setmetatable({} :: {
 	ExpansionSize: number
 }, PartCache))
 
+
 --[==[
 	Creates a new PartCache with the given template part, part count, and parent container for the cache to use.
 
-	@param Template BasePart - The template base part to use, this is the part that will be used in the cache
-	@param PresetParts number? - The amount of parts you want to pre-create in the cache
-	@param Parent Instance? - The parent container you want to use for the cache
+	@param template BasePart - The template base part to use, this is the part that will be used in the cache
+	@param presetParts number? - The amount of parts you want to pre-create in the cache
+	@param parent Instance? - The parent container you want to use for the cache
 
 	@return PartCache
 ]==]
-function PartCache.new(Template: BasePart, PresetParts: number?, Parent: Instance?): PartCache
-	assert(Template and typeof(Template) == "Instance" and Template:IsA("BasePart"), "Template part is not a BasePart instance!")
-	assert(Template.Archivable == true, "Template part must be archivable! It will not work with the PartCache otherwise!")
+function PartCache.new(template: BasePart, presetParts: number?, parent: Instance?, expansionSize: number?): PartCache
+	assert(template and typeof(template) == "Instance" and template:IsA("BasePart"), "Template part is not a BasePart instance!")
+	assert(template.Archivable == true, "Template part must be archivable! It will not work with the PartCache otherwise!")
 
-	local RealPresetParts: number = 5
-	local RealParent: Instance = workspace
+	local realPresetParts = 5
+	local realParent = workspace
 
-	if PresetParts ~= nil then
-		assert(type(PresetParts) == "number", "PresetParts must be provided!")
-		assert(tostring(math.floor(PresetParts)) == tostring(PresetParts), "PresetParts must be an int!")
-		RealPresetParts = PresetParts
+	if presetParts ~= nil then
+		assert(type(presetParts) == "number", "PresetParts must be provided!")
+		assert(tostring(math.floor(presetParts)) == tostring(presetParts), "PresetParts must be an integer!")
+		realPresetParts = presetParts
 	end
 
-	if Parent ~= nil then
-		assert(typeof(Parent) == "Instance", "Valid parent must be provided!")
-		RealParent = Parent
+	if parent ~= nil then
+		assert(typeof(parent) == "Instance", "Valid parent must be provided!")
+		realParent = parent
 	end
 
 	local self: PartCache = setmetatable({
@@ -97,15 +95,15 @@ function PartCache.new(Template: BasePart, PresetParts: number?, Parent: Instanc
 		InUseSize = 0,
 		TotalSize = 0,
 
-		Template = Template:Clone(),
-		CurrentCacheParent = RealParent,
-		ExpansionSize = 10,
+		Template = template:Clone(),
+		CurrentCacheParent = realParent,
+		ExpansionSize = expansionSize or 10,
 	}, PartCache)
 
 	self.Template.Anchored = true
 	self.Template.Parent = nil
 
-	self:Expand(RealPresetParts)
+	self:Expand(realPresetParts)
 
 	return self
 end
@@ -119,19 +117,19 @@ function PartCache.Destroy(self: PartCache)
 	self.Template:Destroy()
 
 	--// Destroy parts in use
-	for Part: BasePart in self.InUse do
-		Part:Destroy()
+	for part in self.InUse do
+		part:Destroy()
 	end
 
 	table.clear(self.InUse)
 
 	--// Destroy parts in cache
-	local CurrentCachedNode: PartCacheLinkNode? = self.Cache
+	local currentNode = self.Cache
 	self.Cache = nil --// Remove from object
 
-	while CurrentCachedNode ~= nil do
-		CurrentCachedNode.Value:Destroy()
-		CurrentCachedNode = CurrentCachedNode.Next
+	while currentNode ~= nil do
+		currentNode.Value:Destroy()
+		currentNode = currentNode.Next
 	end
 
 	--// Destroy the rest of the object
@@ -142,33 +140,48 @@ end
 --[==[
 	Expands the size of the part cache by the given amount.
 
-	@param Count number - The amount of new parts to add to the cache
+	@param count number - The amount of new parts to add to the cache
 ]==]
-function PartCache.Expand(self: PartCache, Count: number)
-	local CurrentNode: PartCacheLinkNode? = self.Cache
-	local Parent: Instance = self.CurrentCacheParent
-	local Template: BasePart = self.Template
+function PartCache.Expand(self: PartCache, count: number)
+	local currentNode = self.Cache
+	local parent = self.CurrentCacheParent
+	local template = self.Template
 
-	self.TotalSize += Count
-	self.CacheSize += Count
-
+	self.TotalSize += count
+	self.CacheSize += count
+	
+	local newParts = table.create(count) :: { BasePart }
+	local cframeList = table.create(count, CACHED_PART_CFRAME)
+	
 	--// Insert nodes
-	for _ = 1, Count do
-		local Part: BasePart = Template:Clone()
-
-		CurrentNode = {
-			Value = Part,
-			Next = CurrentNode
+	for _ = 1, count do
+		local part = template:Clone()
+		currentNode = {
+			Value = part,
+			Next = currentNode
 		}
 
-		Part.CFrame = CACHED_PART_CFRAME
-		Part.Parent = Parent
+		--part.CFrame = CACHED_PART_CFRAME
+		--part.Parent = parent
+		table.insert(newParts, part)
 	end
+	
+	--// Move parts!
+	workspace:BulkMoveTo(newParts, cframeList, Enum.BulkMoveMode.FireCFrameChanged)
+	
+	--// Re-parent after moving the parts
+	--// Can help reduce networking
+	for _, part in newParts do
+		part.Parent = parent
+	end
+	
+	table.clear(newParts)
+	table.clear(cframeList)
 
-	self.Cache = CurrentNode
+	self.Cache = currentNode
 end
 
---// TODO: add shrink method
+
 
 --[==[
 	Fetches a part from the part cache, and expands the part cache by 10 if the cache does not have any available parts.
@@ -184,109 +197,174 @@ function PartCache.GetPart(self: PartCache): BasePart
 	end
 
 	--// Now fetch the latest node + part from the cache
-	local CurrentNode: PartCacheLinkNode = self.Cache :: PartCacheLinkNode
-	local Part: BasePart = CurrentNode.Value
+	local currentNode = self.Cache :: PartCacheLinkNode
+	local part = currentNode.Value
 
 	--// Remove node
 	self.CacheSize -= 1
-	self.Cache = CurrentNode.Next
+	self.Cache = currentNode.Next
 
 	self.InUseSize += 1
-	self.InUse[Part] = true
+	self.InUse[part] = true
 
-	return Part
-end
-
---[==[
-	Fetches an amount of parts from the part cache.
-
-	@return {BasePart}
-]==]
-function PartCache.GetParts(self: PartCache, Amount: number): { BasePart }
-	--// Make sure parts are available
-	local Available: number = self.CacheSize - Amount
-	
-	if Available < 0 then
-		self:Expand(-Available)
-		warn(`No parts available in the cache! Creating {-Available} new part instance(s)... New size: {self.TotalSize} parts.`)
-	end
-	
-	local Parts: { BasePart } = {}
-	
-	local CurrentNode: PartCacheLinkNode? = self.Cache :: PartCacheLinkNode
-	local InUse: { [BasePart]: boolean } = self.InUse
-	
-	if CurrentNode then
-		self.CacheSize -= Amount
-		self.InUseSize += Amount
-
-		for i: number = 1, Amount do
-			local Next: PartCacheLinkNode? = CurrentNode.Next
-			local Part: BasePart = CurrentNode.Value
-
-			--// Remove node
-			self.Cache = Next
-			InUse[Part] = true
-			
-			table.insert(Parts, Part)
-
-			CurrentNode = Next
-		end
-	end
-
-	return Parts
+	return part
 end
 
 --[==[
 	Returns a part that is in use to the cache. Parts that are not in the cache, or are not in use, will throw an error.
 
-	@param Part BasePart - The part to return to the cache
+	@param part BasePart - The part to return to the cache
 ]==]
-function PartCache.ReturnPart(self: PartCache, Part: BasePart)
+function PartCache.ReturnPart(self: PartCache, part: BasePart)
+	if self.CacheSize == self.TotalSize then return end
+	
 	--// Make sure the part is in use
-	if not self.InUse[Part] then
+	if not self.InUse[part] then
 		--// Otherwise, throw an error
-		--// I would use an assertion but i dont wanna call :GetFullName() every call
-		--// I care too much sometimes about optimization lol
-		error(`Part {Part:GetFullName()} is not in use! Part was not returned to the cache.`)
+		error(`Part '{part:GetFullName()}' is not in use! Part was not returned to the cache.`)
 		return
 	end
 
 	--// Insert node
 	self.CacheSize += 1
 	self.Cache = {
-		Value = Part,
+		Value = part,
 		Next = self.Cache,
 	}
 
 	self.InUseSize -= 1
-	self.InUse[Part] = nil
+	self.InUse[part] = nil
 
-	Part.CFrame = CACHED_PART_CFRAME
-	if not Part.Anchored then
-		Part.Anchored = true
+	part.CFrame = CACHED_PART_CFRAME
+	if not part.Anchored then
+		part.Anchored = true
 	end
 end
+
+
+--[==[
+	Bulk fetches a amount of parts from the part cache.
+
+	@param amount number - The amount of new parts to add to the cache
+	
+	@return {BasePart}
+]==]
+function PartCache.GetParts(self: PartCache, amount: number): { BasePart }
+	--// Make sure parts are available
+	local partsAvailable = self.CacheSize - amount
+
+	if partsAvailable < 0 then
+		self:Expand(-partsAvailable)
+		warn(`No parts available in the cache! Creating {-partsAvailable} new part instance(s)... New size: {self.TotalSize} parts.`)
+	end
+
+	local parts = {} :: { BasePart }
+
+	local currentNode = self.Cache :: PartCacheLinkNode
+	local inUse = self.InUse
+
+	if currentNode then
+		self.CacheSize -= amount
+		self.InUseSize += amount
+
+		for i = 1, amount do
+			local nextNode = currentNode.Next
+			local part = currentNode.Value
+
+			--// Remove node
+			self.Cache = nextNode
+			inUse[part] = true
+
+			table.insert(parts, part)
+
+			currentNode = nextNode :: PartCacheLinkNode
+		end
+	end
+
+	return parts
+end
+
+--[==[
+	Bulk returns a list of parts that are in use to the cache.
+
+	@param parts {BasePart} - The parts to return to the cache
+]==]
+function PartCache.ReturnParts(self: PartCache, parts: { BasePart })
+	if self.CacheSize == self.TotalSize then return end
+	
+	local amount = #parts
+	if amount == 0 then return end
+	
+	local returningParts = {} :: { BasePart }
+	local partsNotInUse = {} :: { BasePart }
+	local inUse = self.InUse
+	local parent = self.CurrentCacheParent
+
+	self.CacheSize += amount
+	self.InUseSize -= amount
+
+	for _, part in parts do
+		--// Make sure the part is in use
+		if not inUse[part] then
+			table.insert(partsNotInUse, part)
+			continue
+		end
+
+		--// Insert node
+		self.Cache = {
+			Value = part,
+			Next = self.Cache,
+		}
+
+		inUse[part] = nil
+		
+		table.insert(returningParts, part)
+		--part.CFrame = CACHED_PART_CFRAME
+		--if not part.Anchored then
+		--	part.Anchored = true
+		--end
+	end
+	
+	--// Move parts!
+	workspace:BulkMoveTo(returningParts, table.create(#returningParts, CACHED_PART_CFRAME), Enum.BulkMoveMode.FireCFrameChanged)
+
+	for _, part in returningParts do
+		if part.Parent ~= parent then
+			part.Parent = parent
+		end
+		if not part.Anchored then
+			part.Anchored = true
+		end
+	end
+	
+	--// Warn about the unused parts!
+	for _, part in partsNotInUse do
+		warn(`Part '{part:GetFullName()}' is not in use! Part was not returned to the cache.`)
+	end
+	
+	table.clear(returningParts)
+	table.clear(partsNotInUse)
+end
+
 
 --[==[
 	Sets a new parent for the cache to use, also moving all the existing parts in the cache under that new instance.
 
 	@param Parent Instance - The new parent instance to use
 ]==]
-function PartCache.SetCacheParent(self: PartCache, Parent: Instance)
-	self.CurrentCacheParent = Parent
+function PartCache.SetCacheParent(self: PartCache, parent: Instance)
+	self.CurrentCacheParent = parent
 
 	--// Move parts in use
-	for Part: BasePart in self.InUse do
-		Part.Parent = Parent
+	for part in self.InUse do
+		part.Parent = parent
 	end
 
 	--// Move parts in cache
-	local CurrentCachedNode: PartCacheLinkNode? = self.Cache
-
-	while CurrentCachedNode ~= nil do
-		CurrentCachedNode.Value.Parent = Parent
-		CurrentCachedNode = CurrentCachedNode.Next
+	local currentNode = self.Cache
+	while currentNode ~= nil do
+		currentNode.Value.Parent = parent
+		currentNode = currentNode.Next
 	end
 end
 

@@ -7,7 +7,7 @@
 
 MIT License
 
-Copyright (c) 2025 8ch99
+Copyright (c) 2026 8ch99
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -68,7 +68,7 @@ export type PartCache = typeof(setmetatable({} :: {
 	@param presetParts number? - The amount of parts you want to pre-create in the cache
 	@param parent Instance? - The parent container you want to use for the cache
 
-	@return PartCache
+	@returns PartCache
 ]==]
 function PartCache.new(template: BasePart, presetParts: number?, parent: Instance?, expansionSize: number?): PartCache
 	assert(template and typeof(template) == "Instance" and template:IsA("BasePart"), "Template part is not a BasePart instance!")
@@ -186,7 +186,7 @@ end
 --[==[
 	Fetches a part from the part cache, and expands the part cache by 10 if the cache does not have any available parts.
 
-	@return BasePart
+	@returns BasePart
 ]==]
 function PartCache.GetPart(self: PartCache): BasePart
 	--// Make sure parts are available
@@ -247,7 +247,7 @@ end
 
 	@param amount number - The amount of new parts to add to the cache
 	
-	@return {BasePart}
+	@returns {BasePart}
 ]==]
 function PartCache.GetParts(self: PartCache, amount: number): { BasePart }
 	--// Make sure parts are available

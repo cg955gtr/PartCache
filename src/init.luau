@@ -1,31 +1,31 @@
 --// Author: 8ch99
 --// Date written: 20th November 2025
 --// PartCache module that uses LinkedLists and has method parity with Xan_TheDragon's PartCache module
---// ^ excluding :Dispose(), which is written as :Destroy() instead
+--// ^ excluding :Dispose(), which is defined as :Destroy() instead
 
 --[==[
 
-MIT License
+	MIT License
 
-Copyright (c) 2026 8ch99
+	Copyright (c) 2026 8ch99
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
 
 ]==]
 
@@ -33,12 +33,13 @@ SOFTWARE.
 --!native
 --!optimize 2
 
-local CACHED_PART_CFRAME = CFrame.new(0, 1e7, 0)
+const CACHED_PART_CFRAME = CFrame.new(0, 1e7, 0)
 
 --// @class PartCache
 
-local PartCache = {}
+const PartCache = {}
 PartCache.__index = PartCache
+
 PartCache.__type = "PartCache"
 
 --// Typedefs
@@ -71,11 +72,12 @@ export type PartCache = typeof(setmetatable({} :: {
 	@returns PartCache
 ]==]
 function PartCache.new(template: BasePart, presetParts: number?, parent: Instance?, expansionSize: number?): PartCache
+
 	assert(template and typeof(template) == "Instance" and template:IsA("BasePart"), "Template part is not a BasePart instance!")
 	assert(template.Archivable == true, "Template part must be archivable! It will not work with the PartCache otherwise!")
 
-	local realPresetParts = 5
-	local realParent = workspace
+	local realPresetParts: number = 5
+	local realParent: Instance = workspace
 
 	if presetParts ~= nil then
 		assert(type(presetParts) == "number", "PresetParts must be provided!")
@@ -88,6 +90,7 @@ function PartCache.new(template: BasePart, presetParts: number?, parent: Instanc
 		realParent = parent
 	end
 
+	local realTemplate: BasePart = template:Clone()
 	local self: PartCache = setmetatable({
 		Cache = nil :: PartCacheLinkNode?,
 		InUse = {} :: { [BasePart]: boolean },
@@ -95,17 +98,20 @@ function PartCache.new(template: BasePart, presetParts: number?, parent: Instanc
 		InUseSize = 0,
 		TotalSize = 0,
 
-		Template = template:Clone(),
+		Template = realTemplate,
 		CurrentCacheParent = realParent,
 		ExpansionSize = expansionSize or 10,
 	}, PartCache)
 
-	self.Template.Anchored = true
-	self.Template.Parent = nil
+
+	realTemplate.Anchored = true
+	realTemplate.Parent = nil
 
 	self:Expand(realPresetParts)
 
+
 	return self
+
 end
 
 --[==[
@@ -113,18 +119,19 @@ end
 	NOTE: This will destroy parts that are in use aswell, which may break something if you aren't careful. Beware!
 ]==]
 function PartCache.Destroy(self: PartCache)
+
 	--// Destroy the template
 	self.Template:Destroy()
 
 	--// Destroy parts in use
-	for part in self.InUse do
+	for part: BasePart in self.InUse do
 		part:Destroy()
 	end
 
 	table.clear(self.InUse)
 
 	--// Destroy parts in cache
-	local currentNode = self.Cache
+	local currentNode: PartCacheLinkNode? = self.Cache
 	self.Cache = nil --// Remove from object
 
 	while currentNode ~= nil do
@@ -135,6 +142,7 @@ function PartCache.Destroy(self: PartCache)
 	--// Destroy the rest of the object
 	table.clear(self :: any)
 	setmetatable(self :: any, nil)
+
 end
 
 --[==[
@@ -143,19 +151,20 @@ end
 	@param count number - The amount of new parts to add to the cache
 ]==]
 function PartCache.Expand(self: PartCache, count: number)
-	local currentNode = self.Cache
-	local parent = self.CurrentCacheParent
-	local template = self.Template
+
+	local currentNode: PartCacheLinkNode? = self.Cache
+	local parent: Instance = self.CurrentCacheParent
+	local template: BasePart = self.Template
 
 	self.TotalSize += count
 	self.CacheSize += count
-	
+
 	local newParts = table.create(count) :: { BasePart }
-	local cframeList = table.create(count, CACHED_PART_CFRAME)
-	
+	local cframeList: { CFrame } = table.create(count, CACHED_PART_CFRAME)
+
 	--// Insert nodes
 	for _ = 1, count do
-		local part = template:Clone()
+		local part: BasePart = template:Clone()
 		currentNode = {
 			Value = part,
 			Next = currentNode
@@ -165,20 +174,22 @@ function PartCache.Expand(self: PartCache, count: number)
 		--part.Parent = parent
 		table.insert(newParts, part)
 	end
-	
+
 	--// Move parts!
-	workspace:BulkMoveTo(newParts, cframeList, Enum.BulkMoveMode.FireCFrameChanged)
-	
+	local typecasted: { Instance } = newParts :: { any }
+	workspace:BulkMoveTo(typecasted, cframeList, Enum.BulkMoveMode.FireCFrameChanged)
+
 	--// Re-parent after moving the parts
 	--// Can help reduce networking
-	for _, part in newParts do
+	for _, part: BasePart in newParts do
 		part.Parent = parent
 	end
-	
+
 	table.clear(newParts)
 	table.clear(cframeList)
 
 	self.Cache = currentNode
+
 end
 
 
@@ -189,6 +200,7 @@ end
 	@returns BasePart
 ]==]
 function PartCache.GetPart(self: PartCache): BasePart
+
 	--// Make sure parts are available
 	if self.CacheSize == 0 then
 		--// Otherwise, Expand the cache, since we are above demand for parts needed
@@ -198,7 +210,7 @@ function PartCache.GetPart(self: PartCache): BasePart
 
 	--// Now fetch the latest node + part from the cache
 	local currentNode = self.Cache :: PartCacheLinkNode
-	local part = currentNode.Value
+	local part: BasePart = currentNode.Value
 
 	--// Remove node
 	self.CacheSize -= 1
@@ -208,6 +220,7 @@ function PartCache.GetPart(self: PartCache): BasePart
 	self.InUse[part] = true
 
 	return part
+
 end
 
 --[==[
@@ -216,8 +229,9 @@ end
 	@param part BasePart - The part to return to the cache
 ]==]
 function PartCache.ReturnPart(self: PartCache, part: BasePart)
+
 	if self.CacheSize == self.TotalSize then return end
-	
+
 	--// Make sure the part is in use
 	if not self.InUse[part] then
 		--// Otherwise, throw an error
@@ -239,6 +253,7 @@ function PartCache.ReturnPart(self: PartCache, part: BasePart)
 	if not part.Anchored then
 		part.Anchored = true
 	end
+
 end
 
 
@@ -250,26 +265,26 @@ end
 	@returns {BasePart}
 ]==]
 function PartCache.GetParts(self: PartCache, amount: number): { BasePart }
-	--// Make sure parts are available
-	local partsAvailable = self.CacheSize - amount
 
+	--// Make sure parts are available
+	local partsAvailable: number = self.CacheSize - amount
 	if partsAvailable < 0 then
 		self:Expand(-partsAvailable)
 		warn(`No parts available in the cache! Creating {-partsAvailable} new part instance(s)... New size: {self.TotalSize} parts.`)
 	end
 
-	local parts = {} :: { BasePart }
+	local parts = table.create(amount) :: { BasePart }
 
 	local currentNode = self.Cache :: PartCacheLinkNode
-	local inUse = self.InUse
+	local inUse: { [BasePart]: boolean } = self.InUse
 
 	if currentNode then
 		self.CacheSize -= amount
 		self.InUseSize += amount
 
-		for i = 1, amount do
-			local nextNode = currentNode.Next
-			local part = currentNode.Value
+		for i: number = 1, amount do
+			local nextNode = currentNode.Next :: PartCacheLinkNode
+			local part: BasePart = currentNode.Value
 
 			--// Remove node
 			self.Cache = nextNode
@@ -282,6 +297,7 @@ function PartCache.GetParts(self: PartCache, amount: number): { BasePart }
 	end
 
 	return parts
+
 end
 
 --[==[
@@ -290,20 +306,21 @@ end
 	@param parts {BasePart} - The parts to return to the cache
 ]==]
 function PartCache.ReturnParts(self: PartCache, parts: { BasePart })
+
 	if self.CacheSize == self.TotalSize then return end
-	
-	local amount = #parts
+
+	local amount: number = #parts
 	if amount == 0 then return end
-	
-	local returningParts = {} :: { BasePart }
-	local partsNotInUse = {} :: { BasePart }
-	local inUse = self.InUse
-	local parent = self.CurrentCacheParent
+
+	local returningParts = table.create(#parts) :: { BasePart }
+	local partsNotInUse: { BasePart } = {}
+	local inUse: { [BasePart]: boolean } = self.InUse
+	local parent: Instance = self.CurrentCacheParent
 
 	self.CacheSize += amount
 	self.InUseSize -= amount
 
-	for _, part in parts do
+	for _, part: BasePart in parts do
 		--// Make sure the part is in use
 		if not inUse[part] then
 			table.insert(partsNotInUse, part)
@@ -317,18 +334,20 @@ function PartCache.ReturnParts(self: PartCache, parts: { BasePart })
 		}
 
 		inUse[part] = nil
-		
+
 		table.insert(returningParts, part)
 		--part.CFrame = CACHED_PART_CFRAME
 		--if not part.Anchored then
 		--	part.Anchored = true
 		--end
-	end
-	
-	--// Move parts!
-	workspace:BulkMoveTo(returningParts, table.create(#returningParts, CACHED_PART_CFRAME), Enum.BulkMoveMode.FireCFrameChanged)
 
-	for _, part in returningParts do
+	end
+
+	--// Move parts!
+	local typecasted: { Instance } = returningParts :: { any }
+	workspace:BulkMoveTo(typecasted, table.create(#returningParts, CACHED_PART_CFRAME), Enum.BulkMoveMode.FireCFrameChanged)
+
+	for _, part: BasePart in returningParts do
 		if part.Parent ~= parent then
 			part.Parent = parent
 		end
@@ -336,14 +355,15 @@ function PartCache.ReturnParts(self: PartCache, parts: { BasePart })
 			part.Anchored = true
 		end
 	end
-	
+
 	--// Warn about the unused parts!
-	for _, part in partsNotInUse do
+	for _, part: BasePart in partsNotInUse do
 		warn(`Part '{part:GetFullName()}' is not in use! Part was not returned to the cache.`)
 	end
-	
+
 	table.clear(returningParts)
 	table.clear(partsNotInUse)
+
 end
 
 
@@ -356,16 +376,18 @@ function PartCache.SetCacheParent(self: PartCache, parent: Instance)
 	self.CurrentCacheParent = parent
 
 	--// Move parts in use
-	for part in self.InUse do
+	for part: BasePart in self.InUse do
 		part.Parent = parent
 	end
 
 	--// Move parts in cache
-	local currentNode = self.Cache
+	local currentNode: PartCacheLinkNode? = self.Cache
 	while currentNode ~= nil do
 		currentNode.Value.Parent = parent
 		currentNode = currentNode.Next
 	end
 end
+
+
 
 return PartCache
